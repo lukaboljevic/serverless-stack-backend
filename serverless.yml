@@ -1,0 +1,102 @@
+# NOTE: update this with your service name
+service: notes-api
+
+# Create an optimized package for our functions 
+# This means that, when a lambda function is invoked,
+# it will NOT load all the code in the app, rather it
+# will just package a single lambda function, i.e. it will
+# just package the function being invoked. 
+package:
+  individually: true
+
+plugins:
+  - serverless-bundle # Package our functions with Webpack
+  - serverless-offline
+  - serverless-dotenv-plugin # Load .env as environment variables
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: prod
+  region: eu-west-3  
+
+  # This blocks allows us to define environment variables for 
+  # our Lambda function.
+  # These environment variables are made available to our functions
+  # under process.env. (therefore we are using process.env.tableName 
+  # to access our table)
+  environment:
+   tableName: notes  # ime tabele
+
+  # 'iamRoleStatements' defines the permission policy for the Lambda function.
+  # In this case Lambda functions are granted with permissions to access DynamoDB.
+  # So, these iamRoleStatements are telling AWS which resources our Lambda functions
+  # have access to. 
+  # In this case we are saying that our Lambda functions can carry out the below listed 
+  # actions on DynamoDB.
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:DescribeTable
+      Resource: "arn:aws:dynamodb:eu-west-3:*:*"
+
+# after Creating a User Pool, an Identity Pool and an Auth Role with Cognito,
+# we can add an authorizer for each function
+# The authorizer is telling Serverless framework that our APIs (functions)
+# are secured using an Identity pool. 
+functions:
+  # Defines an HTTP API endpoint that calls the main function in create.js
+  create:
+    handler: create.main
+    events:
+      - http:
+          path: notes  # this is the url path
+          method: post  # POST request
+          authorizer: aws_iam
+  get:
+    # Defines an HTTP API endpoint that calls the main function in get.js
+    # - path: url path is /notes/{id}
+    # - method: GET request
+    handler: get.main
+    events:
+      - http:
+          path: notes/{id}  # {id} is dynamic
+          # it translates to the event.pathParameters.id we used in get.main()
+          method: get
+          authorizer: aws_iam
+  list:
+    # Defines an HTTP API endpoint that calls the main function in list.js
+    # - path: url path is /notes
+    # - method: GET request
+    handler: list.main
+    events:
+      - http:
+          path: notes
+          method: get 
+          authorizer: aws_iam
+  update:
+    # Defines an HTTP API endpoint that calls the main function in update.js
+    # - path: url path is /notes/{id}
+    # - method: PUT request
+    handler: update.main
+    events:
+      - http:
+          path: notes/{id}
+          method: put
+          authorizer: aws_iam
+  delete:
+    # Defines an HTTP API endpoint that calls the main function in delete.js
+    # - path: url path is /notes/{id}
+    # - method: DELETE request
+    handler: delete.main
+    events:
+      - http:
+          path: notes/{id}
+          method: delete
+          authorizer: aws_iam
